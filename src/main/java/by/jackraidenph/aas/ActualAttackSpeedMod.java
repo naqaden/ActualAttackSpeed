@@ -1,6 +1,9 @@
 package by.jackraidenph.aas;
 
+import com.google.common.collect.Multimap;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.entity.ai.attributes.Attribute;
 import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.entity.ai.attributes.Attributes;
 import net.minecraft.inventory.EquipmentSlotType;
@@ -14,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.text.DecimalFormat;
+import java.util.Collection;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod("aas")
@@ -21,6 +25,11 @@ public class ActualAttackSpeedMod {
     private static final Logger LOGGER = LogManager.getLogger();
     private int index;
     private String original;
+    private DecimalFormat df2 = new DecimalFormat("#.###");
+
+    private double sumAllAndReturn(Collection<AttributeModifier> col){
+        return col.stream().map(AttributeModifier::getAmount).reduce(0.0D, Double::sum);
+    }
 
     public ActualAttackSpeedMod() {
         MinecraftForge.EVENT_BUS.register(this);
@@ -35,11 +44,13 @@ public class ActualAttackSpeedMod {
             }
         });
         try {
-            double attackSpeed = 4 + e.getItemStack().getAttributeModifiers(EquipmentSlotType.MAINHAND).get(Attributes.ATTACK_SPEED).stream().map(AttributeModifier::getAmount).reduce(0.0D, Double::sum);
-            double damage = 1 + e.getItemStack().getAttributeModifiers(EquipmentSlotType.MAINHAND).get(Attributes.ATTACK_DAMAGE).stream().findFirst().get().getAmount();
-            DecimalFormat df2 = new DecimalFormat("#.###");
-            e.getToolTip().set(index, new StringTextComponent(TextFormatting.DARK_GREEN + " " + I18n.format("cooldown.time", df2.format(1 / attackSpeed)).trim() + " (" + original.trim() + ")"));
-            e.getToolTip().add(index, new StringTextComponent(TextFormatting.DARK_GREEN + " " + I18n.format("cooldown.dps", df2.format(damage * attackSpeed))));
-        } catch (Exception ignored) {}
+            Multimap<Attribute, AttributeModifier> map = e.getItemStack().getAttributeModifiers(EquipmentSlotType.MAINHAND);
+            double attackSpeed = Attributes.ATTACK_SPEED.getDefaultValue() + sumAllAndReturn(map.get(Attributes.ATTACK_SPEED));
+            double damage = e.getPlayer().getAttributeValue(Attributes.ATTACK_DAMAGE) + sumAllAndReturn(map.get(Attributes.ATTACK_DAMAGE));
+            double actualSpeedInSeconds = Math.ceil((20 / attackSpeed)) / 20;
+            e.getToolTip().set(index, new StringTextComponent(TextFormatting.DARK_GREEN + " " + I18n.format("cooldown.time", df2.format(actualSpeedInSeconds).trim()) + " (" + original.trim() + ")"));
+            e.getToolTip().add(index, new StringTextComponent(TextFormatting.DARK_GREEN + " " + I18n.format("cooldown.dps", df2.format(damage / actualSpeedInSeconds))));
+        } catch (Exception ignored) {
+        }
     }
 }
