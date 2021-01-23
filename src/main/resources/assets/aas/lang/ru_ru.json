@@ -1,4 +1,4 @@
 {
-  "cooldown.time": "%ss Перезарядка Атаки",
-  "cooldown.dps": "%s Макс. DPS"
+  "cooldown.time": "%ss Перезарядка атаки",
+  "cooldown.dps": "%s Макс. DPS (Без критов)"
 }
